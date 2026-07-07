@@ -1,28 +1,15 @@
-2026-07-07 16:24:00 [/home/computergeek/TinyU-Net/./train_tiny_unet.py:81 - INFO ] Arguments in command:
+2026-07-07 22:51:10 [/home/computergeek/TinyU-Net/./train_tinypse.py:81 - INFO ] Arguments in command:
 {'batch_size': 8,
  'checkpoint': 'data_cpt_unet_tse_steplr_clip',
  'epochs': 200,
  'gpus': '0',
  'num_workers': 24,
  'resume': None}
-Traceback (most recent call last):
-  File "/home/computergeek/TinyU-Net/./train_tiny_unet.py", line 83, in <module>
-    run(args)
-  File "/home/computergeek/TinyU-Net/./train_tiny_unet.py", line 46, in run
-    trainer.run(train_loader, dev_loader, num_epochs=args.epochs) 
-  File "/home/computergeek/TinyU-Net/libs/trainer_unet_tse_steplr_clip.py", line 249, in run
-    tr = self.train(train_loader)
-  File "/home/computergeek/TinyU-Net/libs/trainer_unet_tse_steplr_clip.py", line 214, in train
-    reporter.add(loss.item())
-KeyboardInterrupt
-Exception ignored in atexit callback: <function shutdown_compile_workers at 0x743af90bdcf0>
-Traceback (most recent call last):
-  File "/home/computergeek/TinyU-Net/se_tinyu/lib/python3.10/site-packages/torch/_inductor/async_compile.py", line 153, in shutdown_compile_workers
-    pool.shutdown()
-  File "/home/computergeek/TinyU-Net/se_tinyu/lib/python3.10/site-packages/torch/_inductor/compile_worker/subproc_pool.py", line 342, in shutdown
-    self.process.wait(300)
-  File "/usr/lib/python3.10/subprocess.py", line 1209, in wait
-    return self._wait(timeout=timeout)
-  File "/usr/lib/python3.10/subprocess.py", line 1953, in _wait
-    time.sleep(delay)
-KeyboardInterrupt: 
+/home/computergeek/TinyU-Net/se_tinyu/lib/python3.10/site-packages/torch/_dynamo/utils.py:4019: UserWarning: Using padding='same' with even kernel lengths and odd dilation may require a zero-padded copy of the input be created (Triggered internally at /pytorch/aten/src/ATen/native/Convolution.cpp:1090.)
+  return node.target(*args, **kwargs)  # type: ignore[operator]
+W0707 22:51:22.056000 1393426 se_tinyu/lib/python3.10/site-packages/torch/_inductor/utils.py:1717] [5/0] Not enough SMs to use max_autotune_gemm mode
+W0707 22:52:20.937000 1393426 se_tinyu/lib/python3.10/site-packages/torch/_dynamo/convert_frame.py:1853] [4/8] torch._dynamo hit config.recompile_limit (8)
+W0707 22:52:20.937000 1393426 se_tinyu/lib/python3.10/site-packages/torch/_dynamo/convert_frame.py:1853] [4/8]    function: 'forward' (/home/computergeek/TinyU-Net/tinypse.py:281)
+W0707 22:52:20.937000 1393426 se_tinyu/lib/python3.10/site-packages/torch/_dynamo/convert_frame.py:1853] [4/8]    last reason: 4/7: GLOBAL_STATE changed: grad_mode 
+W0707 22:52:20.937000 1393426 se_tinyu/lib/python3.10/site-packages/torch/_dynamo/convert_frame.py:1853] [4/8] To log all recompilation reasons, use TORCH_LOGS="recompiles".
+W0707 22:52:20.937000 1393426 se_tinyu/lib/python3.10/site-packages/torch/_dynamo/convert_frame.py:1853] [4/8] To diagnose recompilation issues, see https://docs.pytorch.org/docs/main/user_guide/torch_compiler/compile/programming_model.recompilation.html

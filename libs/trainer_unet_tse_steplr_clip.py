@@ -140,11 +140,33 @@ class Trainer(object):
         
         self.num_params = sum(
             [param.nelement() for param in nnet.parameters()]) / 10.0**6
+        
+        # --- ADDED: Compute Computational Complexity (GMAC/s) ---
+        try:
+            from thop import profile
+            # Dynamically fetch the device (CPU/GPU) where your model resides
+            device = next(nnet.parameters()).device
+            
+            # 16000 samples = 1 second of audio at 16kHz
+            dummy_mix = th.randn(1, 16000, device=device)
+            dummy_enroll = th.randn(1, 16000, device=device)
+            
+            # verbose=False keeps your main training logs clean
+            macs, _ = profile(nnet, inputs=(dummy_mix, dummy_enroll), verbose=False)
+            self.num_gmacs = macs / 1e9
+        except Exception as e:
+            self.num_gmacs = None
+            self.logger.warning(f"Could not calculate GMACs: {e}")
+        
 
         # logging
         self.logger.info("Model summary:\n{}".format(nnet))
-        self.logger.info("Loading model to GPUs:{}, #param: {:.2f}M".format(
-            gpuid, self.num_params))
+        if self.num_gmacs is not None:
+            self.logger.info("Loading model to GPUs:{}, #param: {:.2f}M, Complexity: {:.2f} GMAC/s".format(
+                gpuid, self.num_params, self.num_gmacs))
+        else:
+            self.logger.info("Loading model to GPUs:{}, #param: {:.2f}M".format(
+                gpuid, self.num_params))
         if clip_norm > 0:
             self.logger.info(
                 "Gradient clipping by {}, default L2".format(clip_norm))

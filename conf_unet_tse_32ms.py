@@ -14,8 +14,8 @@ nnet_conf = {
     "paddings": (1, 0),
     "output_padding": (0, 0),
     "tcn_dims": 64, 
-    "tcn_blocks": 5,
-    "tcn_layers": 2,
+    "tcn_blocks":5,
+    "tcn_layers": 1,
     "causal": False,
     "num_spks": 1 
 }
@@ -38,9 +38,9 @@ dev_data = {
     "sample_rate": fs,
 }
 
-# Adjusted for batch size 8 (Square root scaling: original LR divided by 2)
+# trainer config
 adam_kwargs = {
-    "lr": 0.25e-3,       # equivalent to 2.5e-4 (down from 0.5e-3)
+    "lr": 0.5e-3, 
     "weight_decay": 1e-5, 
 }
 
@@ -50,11 +50,5 @@ trainer_conf = {
     "min_lr": 1e-8, 
     "patience": 2, 
     "factor": 0.5, 
-    # Adjusted from 200 to 800 because an epoch now has 4x more steps.
-    # This keeps your console logs appearing at the exact same data intervals.
     "logging_period": 200  
 }
-
-# Reminder for your main training script execution:
-# Total Epochs target: 50 epochs (if keeping total optimization steps identical)
-#                  or 100 epochs (if you want to leverage the extra fine-tuning)

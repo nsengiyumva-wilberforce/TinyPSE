@@ -120,6 +120,21 @@ class CMRF(nn.Module):
         y = self.pwconv2(y)
 
         return x_residual + y * self.layer_scale if self.add else y
+    
+class SelfAttentivePooling2d(nn.Module):
+    def __init__(self, channels):
+        super().__init__()
+        self.attn_conv = nn.Conv2d(channels, 1, kernel_size=1, bias=True)
+        self.softmax = nn.Softmax(dim=-1)
+
+    @th.compile
+    def forward(self, x):
+        B, C, F, T = x.shape
+        attn_scores = self.attn_conv(x)
+        attn_weights = self.softmax(attn_scores.view(B, 1, -1))
+        flat_x = x.view(B, C, -1)
+        pooled = th.bmm(flat_x, attn_weights.transpose(1, 2))
+        return pooled.view(B, C, 1, 1)
 
 
 class PhaseInterferenceIFI(nn.Module):
@@ -140,7 +155,7 @@ class PhaseInterferenceIFI(nn.Module):
         )
 
         self.destructive_lens = nn.Sequential(
-            nn.AdaptiveAvgPool2d(1),
+            SelfAttentivePooling2d(channels),
             nn.Conv2d(channels, inter_channels, kernel_size=1, stride=1, padding=0, bias=False),
             nn.BatchNorm2d(inter_channels),
             nn.ReLU(inplace=True),
@@ -190,20 +205,7 @@ class SpectralPrism(nn.Module):
         return th.cat(refracted_beams, dim=1)
 
 
-class SelfAttentivePooling2d(nn.Module):
-    def __init__(self, channels):
-        super().__init__()
-        self.attn_conv = nn.Conv2d(channels, 1, kernel_size=1, bias=True)
-        self.softmax = nn.Softmax(dim=-1)
 
-    @th.compile
-    def forward(self, x):
-        B, C, F, T = x.shape
-        attn_scores = self.attn_conv(x)
-        attn_weights = self.softmax(attn_scores.view(B, 1, -1))
-        flat_x = x.view(B, C, -1)
-        pooled = th.bmm(flat_x, attn_weights.transpose(1, 2))
-        return pooled.view(B, C, 1, 1)
 
 
 class LCA(nn.Module):
@@ -299,16 +301,16 @@ class TACT(nn.Module):
         )
 
         self.conv_t_freq = nn.Conv2d(
-            out_channels, out_channels, kernel_size=(11, 1), padding=(5, 0), groups=out_channels, bias=False
+            out_channels, out_channels, kernel_size=(16, 1), padding="same", groups=out_channels, bias=False
         )
         
         if self.causal:
             self.conv_t_time = nn.Conv2d(
-                out_channels, out_channels, kernel_size=(1, 11), padding=(0, 0), groups=out_channels, bias=False
+                out_channels, out_channels, kernel_size=(1, 16), padding="same", groups=out_channels, bias=False
             )
         else:
             self.conv_t_time = nn.Conv2d(
-                out_channels, out_channels, kernel_size=(1, 11), padding=(0, 5), groups=out_channels, bias=False
+                out_channels, out_channels, kernel_size=(1, 16), padding="same", groups=out_channels, bias=False
             )
 
         self.act = nn.GELU()
