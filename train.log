@@ -1,0 +1,28 @@
+2026-07-07 16:24:00 [/home/computergeek/TinyU-Net/./train_tiny_unet.py:81 - INFO ] Arguments in command:
+{'batch_size': 8,
+ 'checkpoint': 'data_cpt_unet_tse_steplr_clip',
+ 'epochs': 200,
+ 'gpus': '0',
+ 'num_workers': 24,
+ 'resume': None}
+Traceback (most recent call last):
+  File "/home/computergeek/TinyU-Net/./train_tiny_unet.py", line 83, in <module>
+    run(args)
+  File "/home/computergeek/TinyU-Net/./train_tiny_unet.py", line 46, in run
+    trainer.run(train_loader, dev_loader, num_epochs=args.epochs) 
+  File "/home/computergeek/TinyU-Net/libs/trainer_unet_tse_steplr_clip.py", line 249, in run
+    tr = self.train(train_loader)
+  File "/home/computergeek/TinyU-Net/libs/trainer_unet_tse_steplr_clip.py", line 214, in train
+    reporter.add(loss.item())
+KeyboardInterrupt
+Exception ignored in atexit callback: <function shutdown_compile_workers at 0x743af90bdcf0>
+Traceback (most recent call last):
+  File "/home/computergeek/TinyU-Net/se_tinyu/lib/python3.10/site-packages/torch/_inductor/async_compile.py", line 153, in shutdown_compile_workers
+    pool.shutdown()
+  File "/home/computergeek/TinyU-Net/se_tinyu/lib/python3.10/site-packages/torch/_inductor/compile_worker/subproc_pool.py", line 342, in shutdown
+    self.process.wait(300)
+  File "/usr/lib/python3.10/subprocess.py", line 1209, in wait
+    return self._wait(timeout=timeout)
+  File "/usr/lib/python3.10/subprocess.py", line 1953, in _wait
+    time.sleep(delay)
+KeyboardInterrupt: 
