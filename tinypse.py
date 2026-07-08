@@ -2,7 +2,7 @@ from typing import List, Tuple
 import torch as th
 import torch.nn as nn
 import torch.nn.functional as F
-import math
+
 
 from torch._subclasses.complex_tensor import ComplexTensor
 from libs.conv_stft import ConvSTFT, ConviSTFT
@@ -197,10 +197,6 @@ class SpectralPrism(nn.Module):
     def forward(self, x):
         refracted_beams = [refract(x) for refract in self.refractors]
         return th.cat(refracted_beams, dim=1)
-
-
-
-
 
 class LCA(nn.Module):
     def __init__(self, channels=64, r=4):
@@ -503,10 +499,21 @@ class TinyPSE(nn.Module):
         return th.stack([out_c.real, out_c.imag], dim=1)  # [B, 2, F, T]
     
     @th.compile    
-    def ComputeSimilarity_non_phase(self, input, enrollment):
-        att = enrollment.transpose(-2, -1) @ input
-        att = self.softmax(att)
-        output = enrollment @ att
+    def ComputeSimilarity_non_phase(self, input_mag, enrollment_mag):
+        # input_mag: [B, F, T] (Magnitude only)
+        # enrollment_mag: [B, F, 1] (Magnitude only)
+        
+        # Standard dot product on magnitude
+        att = enrollment_mag.transpose(-2, -1) @ input_mag  # [B, 1, T]
+        
+        # Scale it to prevent softmax vanishing gradients
+        F_dim = enrollment_mag.shape[1]
+        att = att / (F_dim ** 0.5)
+        
+        att_weights = self.softmax(att)
+        
+        # Apply attention to target speaker's magnitude
+        output = enrollment_mag @ att_weights  # [B, F, T]
 
         return output
 
@@ -543,7 +550,7 @@ class TinyPSE(nn.Module):
         sim_complex = self.ComputeSimilarity(mix_spec_change, aux_drc)  
         
         # Get real similarity and fix the shape by removing the dummy dimensions
-        sim_real = self.ComputeSimilarity_non_phase(mix_spec_change, aux_drc).squeeze(0).squeeze(0)
+        sim_real = self.ComputeSimilarity_non_phase(mix_spec_change, aux_drc)
 
         # COMBINE: Simple addition (or you could do (sim_complex + sim_real) * 0.5)
         similarity = (self.sim_alpha * sim_complex) + (self.sim_beta * sim_real)
