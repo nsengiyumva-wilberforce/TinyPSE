@@ -3,6 +3,7 @@
 import os
 import sys
 import time
+from thop import profile
 
 # from itertools import permutations
 from collections import defaultdict
@@ -141,22 +142,38 @@ class Trainer(object):
         self.num_params = sum(
             [param.nelement() for param in nnet.parameters()]) / 10.0**6
         
-        # --- ADDED: Compute Computational Complexity (GMAC/s) ---
+# --- ADDED: Compute Computational Complexity (GMAC/s) ---
         try:
-            from thop import profile
-            # Dynamically fetch the device (CPU/GPU) where your model resides
             device = next(nnet.parameters()).device
-            
-            # 16000 samples = 1 second of audio at 16kHz
             dummy_mix = th.randn(1, 16000, device=device)
             dummy_enroll = th.randn(1, 16000, device=device)
             
-            # verbose=False keeps your main training logs clean
+            from thop import profile
             macs, _ = profile(nnet, inputs=(dummy_mix, dummy_enroll), verbose=False)
             self.num_gmacs = macs / 1e9
+            
         except Exception as e:
             self.num_gmacs = None
             self.logger.warning(f"Could not calculate GMACs: {e}")
+            
+        finally:
+            # Pure PyTorch deep clean to guarantee NO hooks survive
+            for m in nnet.modules():
+                # Clear standard PyTorch hooks
+                if hasattr(m, '_backward_hooks'):
+                    m._backward_hooks.clear()
+                if hasattr(m, '_forward_hooks'):
+                    m._forward_hooks.clear()
+                if hasattr(m, '_forward_pre_hooks'):
+                    m._forward_pre_hooks.clear()
+                
+                # Delete the specific buffers thop leaves behind
+                if hasattr(m, 'total_ops'):
+                    delattr(m, 'total_ops')
+                if hasattr(m, 'total_params'):
+                    delattr(m, 'total_params')
+
+            
         
 
         # logging

@@ -26,6 +26,5 @@
     "tcn_dims": 64,
     "tcn_blocks": 5,
     "tcn_layers": 1,
-    "causal": false,
-    "num_spks": 1
+    "causal": false
 }

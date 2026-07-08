@@ -17,7 +17,6 @@ nnet_conf = {
     "tcn_blocks":5,
     "tcn_layers": 1,
     "causal": False,
-    "num_spks": 1 
 }
 
 train_dir = C.TRAIN_DIR

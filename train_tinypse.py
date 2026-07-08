@@ -62,7 +62,7 @@ if __name__ == "__main__":
                         help="Number of training epochs")
     parser.add_argument("--checkpoint",
                         type=str,
-                        default='/node/hzl/expriment/SEF_PNet_icassp2025_github/demo',
+                        default='demo_cpt',
                         #required=True,
                         help="Directory to dump models")
     parser.add_argument("--resume", 

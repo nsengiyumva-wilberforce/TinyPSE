@@ -94,7 +94,6 @@ class CMRF(nn.Module):
         self.pwconv1 = Conv(c1, c2 // self.N, 1, 1)
         self.pwconv2 = Conv(c2 // 2, c2, 1, 1)
         
-        # CASCADE: Exponentially dilate the time axis for massive temporal context
         self.m = nn.ModuleList(
             SpeechDWConv(self.c, k_f=3, k_t=3, dilation_t=(2**i), causal=causal, act=False) 
             for i in range(N - 1)
@@ -109,7 +108,6 @@ class CMRF(nn.Module):
 
         x = [x[:, 0::2, :, :], x[:, 1::2, :, :]]
         
-        # Explicit append loop for stable PyTorch tracing
         for m in self.m:
             x.append(m(x[-1]))
             
@@ -137,13 +135,12 @@ class SelfAttentivePooling2d(nn.Module):
         return pooled.view(B, C, 1, 1)
 
 
-class PhaseInterferenceIFI(nn.Module):
+class IFI(nn.Module):
     """
-    Creatively adapted IFI block using Wave Superposition mechanics.
-    Analyzes constructive and destructive interference between the mixture and the target speaker.
+    Iterative Feature Integration (IFI) Module.
     """
     def __init__(self, channels=2, r=1/32):
-        super(PhaseInterferenceIFI, self).__init__()
+        super(IFI, self).__init__()
         inter_channels = max(1, int(channels // r))
 
         self.constructive_lens = nn.Sequential(
@@ -166,16 +163,13 @@ class PhaseInterferenceIFI(nn.Module):
         self.phase_gate = nn.Sigmoid()
 
     def forward(self, x, residual):
-        # Superposition of incoming waves
         superposition = x + residual
         
         constructive = self.constructive_lens(superposition)
         destructive = self.destructive_lens(superposition)
         
-        # Determine the phase alignment
         alignment = self.phase_gate(constructive + destructive)
         
-        # Filter based on phase match
         xo = x * alignment + residual * (1 - alignment)
         return xo
 
@@ -241,24 +235,6 @@ class LCA(nn.Module):
         return x * wei
 
 
-class Conv2dBlock(nn.Module):
-    def __init__(
-        self,
-        in_dims: int = 16,
-        out_dims: int = 32,
-        kernel_size: Tuple[int] = (3, 3),
-        stride: Tuple[int] = (1, 1),
-        padding: Tuple[int] = (1, 1),
-    ) -> None:
-        super(Conv2dBlock, self).__init__()
-        self.conv2d = nn.Conv2d(in_dims, out_dims, kernel_size, stride, padding)
-        self.elu = nn.ELU()
-        self.norm = nn.InstanceNorm2d(out_dims)
-
-    def forward(self, x: th.Tensor) -> th.Tensor:
-        x = self.conv2d(x)
-        x = self.elu(x)
-        return self.norm(x)
 
 
 class UNetEncoder(nn.Module):
@@ -285,7 +261,8 @@ class UNetDecoder(nn.Module):
         x = self.cmrf(x)
         return x
 
-
+# change causal to True if you wanna trade off some accuracy for speed. 
+# It will make the model causal and thus suitable for streaming applications.
 class TACT(nn.Module):
     def __init__(self, in_channels, out_channels, causal: bool = False):
         super(TACT, self).__init__()
@@ -301,16 +278,17 @@ class TACT(nn.Module):
         )
 
         self.conv_t_freq = nn.Conv2d(
-            out_channels, out_channels, kernel_size=(16, 1), padding="same", groups=out_channels, bias=False
+            out_channels, out_channels, kernel_size=(32, 1), padding="same", groups=out_channels, bias=False
         )
-        
+        # notice that if using causal, the padding is set to "valid" and we will pad manually in the forward pass,
+        # I DO NOT know why it throws an error if I set padding to "same" and use causal, but it works if I set it to "valid" and pad manually.
         if self.causal:
             self.conv_t_time = nn.Conv2d(
-                out_channels, out_channels, kernel_size=(1, 16), padding="same", groups=out_channels, bias=False
+                out_channels, out_channels, kernel_size=(1, 32), padding="valid", groups=out_channels, bias=False
             )
         else:
             self.conv_t_time = nn.Conv2d(
-                out_channels, out_channels, kernel_size=(1, 16), padding="same", groups=out_channels, bias=False
+                out_channels, out_channels, kernel_size=(1, 32), padding="same", groups=out_channels, bias=False
             )
 
         self.act = nn.GELU()
@@ -324,21 +302,27 @@ class TACT(nn.Module):
 
     def _apply_time_conv(self, tensor_in: th.Tensor, conv_layer: nn.Conv2d) -> th.Tensor:
         if self.causal:
-            padded = F.pad(tensor_in, (10, 0, 0, 0))
+            padded = F.pad(tensor_in, (31, 0, 0, 0))
             return conv_layer(padded)
         return conv_layer(tensor_in)
 
     @th.compile
     def forward(self, x):
+        # Project input to match output channels if necessary
         x_proj = self.proj(x)
 
+        # Apply frequency and time convolutions
+        # obtain frequency features separately
         f_feat = self.act(self.conv_f(x_proj))
 
+        # obtain temporal features separately
         t_feat = self.conv_t_freq(x_proj)
         t_feat = self.act(self._apply_time_conv(t_feat, self.conv_t_time))
 
+        # obtain cross features by applying temporal convolution on frequency features
         cross_wide = self.conv_t_freq(f_feat)
         cross_wide = self.act(self._apply_time_conv(cross_wide, self.conv_t_time))
+
         branch1 = (self.alpha1 * f_feat) + cross_wide
 
         branch2 = (self.alpha2 * t_feat) + self.act(self.conv_f(t_feat))
@@ -420,19 +404,19 @@ class TinyPSE(nn.Module):
         tcn_blocks: int = 10,
         tcn_layers: int = 2,
         pool_size: Tuple[int] = (4, 8, 16, 32),
-        num_spks: int = 1,
     ):
         super(TinyPSE, self).__init__()
         in_filters = [192, 384, 768, 1024]
         out_filters = [64, 128, 256, 512]
 
         self.fft_len = fft_len
-        self.num_spks = num_spks
+        self.sim_alpha = nn.Parameter(th.tensor(1.0))
+        self.sim_beta = nn.Parameter(th.tensor(1.0))
         self.stft = ConvSTFT(win_len, win_inc, fft_len, win_type, "complex")
         self.softmax = nn.Softmax(dim=-2)
 
         # New Phase Interference IFI Module
-        self.ifi = PhaseInterferenceIFI(channels=2, r=1/32)
+        self.ifi = IFI(channels=2, r=1/32)
 
         # NOTE: Reduced in_channels to 4 because IFI outputs a 2-channel representation,
         # which is concatenated with the 2-channel mix_spec_change.
@@ -517,6 +501,14 @@ class TinyPSE(nn.Module):
         out_c = e_c @ att_weights  # logical: [B, F, T]
 
         return th.stack([out_c.real, out_c.imag], dim=1)  # [B, 2, F, T]
+    
+    @th.compile    
+    def ComputeSimilarity_non_phase(self, input, enrollment):
+        att = enrollment.transpose(-2, -1) @ input
+        att = self.softmax(att)
+        output = enrollment @ att
+
+        return output
 
     def sep(self, spec: th.Tensor) -> List[th.Tensor]:
         B, N, Fsmall, T = spec.shape
@@ -543,8 +535,18 @@ class TinyPSE(nn.Module):
         aux = self.wav2spec(enrollment, False)
         aux_drc = self.FeaCompression(aux)
 
+        # # 2. Extract Targeted Speaker Features
+        # similarity = self.ComputeSimilarity(mix_spec_change, aux_drc)  
+
         # 2. Extract Targeted Speaker Features
-        similarity = self.ComputeSimilarity(mix_spec_change, aux_drc)  
+        # Get complex similarity
+        sim_complex = self.ComputeSimilarity(mix_spec_change, aux_drc)  
+        
+        # Get real similarity and fix the shape by removing the dummy dimensions
+        sim_real = self.ComputeSimilarity_non_phase(mix_spec_change, aux_drc).squeeze(0).squeeze(0)
+
+        # COMBINE: Simple addition (or you could do (sim_complex + sim_real) * 0.5)
+        similarity = (self.sim_alpha * sim_complex) + (self.sim_beta * sim_real)
 
         # Pass through the Phase Interference IFI Module
         aux_drc_pooled = F.adaptive_avg_pool2d(aux_drc, (aux_drc.shape[-2], 1))

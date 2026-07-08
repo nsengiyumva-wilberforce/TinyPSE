@@ -1,4 +1,4 @@
-2026-07-07 22:51:10 [/home/computergeek/TinyU-Net/./train_tinypse.py:81 - INFO ] Arguments in command:
+2026-07-08 12:41:08 [/home/computergeek/TinyU-Net/./train_tinypse.py:81 - INFO ] Arguments in command:
 {'batch_size': 8,
  'checkpoint': 'data_cpt_unet_tse_steplr_clip',
  'epochs': 200,
@@ -7,9 +7,9 @@
  'resume': None}
 /home/computergeek/TinyU-Net/se_tinyu/lib/python3.10/site-packages/torch/_dynamo/utils.py:4019: UserWarning: Using padding='same' with even kernel lengths and odd dilation may require a zero-padded copy of the input be created (Triggered internally at /pytorch/aten/src/ATen/native/Convolution.cpp:1090.)
   return node.target(*args, **kwargs)  # type: ignore[operator]
-W0707 22:51:22.056000 1393426 se_tinyu/lib/python3.10/site-packages/torch/_inductor/utils.py:1717] [5/0] Not enough SMs to use max_autotune_gemm mode
-W0707 22:52:20.937000 1393426 se_tinyu/lib/python3.10/site-packages/torch/_dynamo/convert_frame.py:1853] [4/8] torch._dynamo hit config.recompile_limit (8)
-W0707 22:52:20.937000 1393426 se_tinyu/lib/python3.10/site-packages/torch/_dynamo/convert_frame.py:1853] [4/8]    function: 'forward' (/home/computergeek/TinyU-Net/tinypse.py:281)
-W0707 22:52:20.937000 1393426 se_tinyu/lib/python3.10/site-packages/torch/_dynamo/convert_frame.py:1853] [4/8]    last reason: 4/7: GLOBAL_STATE changed: grad_mode 
-W0707 22:52:20.937000 1393426 se_tinyu/lib/python3.10/site-packages/torch/_dynamo/convert_frame.py:1853] [4/8] To log all recompilation reasons, use TORCH_LOGS="recompiles".
-W0707 22:52:20.937000 1393426 se_tinyu/lib/python3.10/site-packages/torch/_dynamo/convert_frame.py:1853] [4/8] To diagnose recompilation issues, see https://docs.pytorch.org/docs/main/user_guide/torch_compiler/compile/programming_model.recompilation.html
+W0708 12:42:20.402000 432372 se_tinyu/lib/python3.10/site-packages/torch/_inductor/utils.py:1717] [3/2] Not enough SMs to use max_autotune_gemm mode
+W0708 12:42:21.396000 432372 se_tinyu/lib/python3.10/site-packages/torch/_dynamo/convert_frame.py:1853] [5/8] torch._dynamo hit config.recompile_limit (8)
+W0708 12:42:21.396000 432372 se_tinyu/lib/python3.10/site-packages/torch/_dynamo/convert_frame.py:1853] [5/8]    function: 'forward' (/home/computergeek/TinyU-Net/tinypse.py:258)
+W0708 12:42:21.396000 432372 se_tinyu/lib/python3.10/site-packages/torch/_dynamo/convert_frame.py:1853] [5/8]    last reason: 5/7: GLOBAL_STATE changed: grad_mode 
+W0708 12:42:21.396000 432372 se_tinyu/lib/python3.10/site-packages/torch/_dynamo/convert_frame.py:1853] [5/8] To log all recompilation reasons, use TORCH_LOGS="recompiles".
+W0708 12:42:21.396000 432372 se_tinyu/lib/python3.10/site-packages/torch/_dynamo/convert_frame.py:1853] [5/8] To diagnose recompilation issues, see https://docs.pytorch.org/docs/main/user_guide/torch_compiler/compile/programming_model.recompilation.html
